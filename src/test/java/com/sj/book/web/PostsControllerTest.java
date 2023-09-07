@@ -3,7 +3,7 @@ package com.sj.book.web;
 import com.sj.book.web.domain.posts.Posts;
 import com.sj.book.web.domain.posts.PostsRepository;
 import com.sj.book.web.dto.PostsSaveRequestDto;
-import org.assertj.core.api.Assertions;
+import com.sj.book.web.dto.PostsUpdateRequestDto;
 import org.junit.After;
 import org.junit.jupiter.api.Test;
 import org.junit.runner.RunWith;
@@ -11,13 +11,35 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.boot.web.server.LocalServerPort;
+import org.springframework.core.annotation.Order;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.test.context.junit4.SpringRunner;
 
+import javax.persistence.EntityNotFoundException;
+import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+
+/**
+ * 메모
+ *
+ * 1. restTemplate
+ *  - 간편하게 Rest 방식의 API를 호출할 수 있는 Spring 내장 클래스
+ *  - Server to Server 통신에 사용 (외부 api 호출)
+ *  - Spring 5.0 이후 부터는 RestTemplate deprecated --> WebClient 사용 지향
+ *
+ * 
+ * 2. HttpEntity
+ *  - HttpHeader 와 body 로 이루어져 Http request, response 엔터티를 나타낸다. 
+ *  - HttpHeaders 객체를 통해 Header 의 ContentType 을 설정하여 요청을 보낼 수 있도록 한다
+ *  - ResponseEntity 와 RequestEntity 의 상위 클래스
+ *
+ */
+
 
 @RunWith(SpringRunner.class)
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
@@ -52,16 +74,84 @@ class PostsControllerTest {
 
         // when
         ResponseEntity<Long> responseEntity = restTemplate.postForEntity(url, requestDto, Long.class);
-        // TODO :: restTemplate 이 무엇을 하는지 확인 후 메모하기
-
 
         // then
         assertThat(responseEntity.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(responseEntity.getBody()).isGreaterThan(0L);
 
+        Posts posts = postsRepository.findById(responseEntity.getBody())
+                .orElseThrow(EntityNotFoundException::new);
+        assertThat(posts.getTitle()).isEqualTo(title);
+        assertThat(posts.getContent()).isEqualTo(content);
+    }
+
+    @Test
+    public void Posts_수정된다() throws Exception {
+        // given
+        Posts savedPosts = postsRepository.save(
+                Posts.builder()
+                        .title("title")
+                        .content("content")
+                        .author("author")
+                        .build()
+        );
+
+        Long updateId = savedPosts.getId();
+        String expectedTitle = "title2";
+        String expectedContent = "content2";
+
+        PostsUpdateRequestDto updateRequestDto = PostsUpdateRequestDto.builder()
+                .title(expectedTitle)
+                .content(expectedContent)
+                .build();
+
+        String url = "http://localhost:" + port + "/api/v1/posts/" + updateId;
+        HttpEntity<PostsUpdateRequestDto> requestEntity = new HttpEntity<>(updateRequestDto);
+
+        // when
+        ResponseEntity<Long> responseEntity = restTemplate.exchange(
+                url,
+                HttpMethod.PUT,
+                requestEntity,
+                Long.class
+        );
+        
+        // then
+        assertThat(responseEntity.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(responseEntity.getBody()).isGreaterThan(0L);
+
         List<Posts> all = postsRepository.findAll();
-        assertThat(all.get(0).getTitle()).isEqualTo(title);
-        assertThat(all.get(0).getContent()).isEqualTo(content);
+        Posts posts = all.stream()
+                .filter(post -> post.getId().equals(updateId))
+                .findAny()
+                .orElseThrow(EntityNotFoundException::new);
+        assertThat(posts.getTitle()).isEqualTo(expectedTitle);
+        assertThat(posts.getContent()).isEqualTo(expectedContent);
+    }
+
+    @Test
+    public void BaseTimeEntity_등록() {
+        // given
+        LocalDateTime now = LocalDateTime.of(2019, 6, 4, 0, 0, 0);
+        postsRepository.save(
+                Posts.builder()
+                        .title("title")
+                        .content("content")
+                        .author("author")
+                        .build()
+        );
+
+        // when
+        List<Posts> postsList = postsRepository.findAll();
+
+        // then
+        Posts posts = postsList.get(0);
+
+        System.out.println(">>>>> createdDate : " + posts.getCreatedDate() + ", modifiedDAte : " + posts.getModifiedDate());
+
+        assertThat(posts.getCreatedDate()).isAfter(now);
+        assertThat(posts.getModifiedDate()).isAfter(now);
+
     }
 
 }
