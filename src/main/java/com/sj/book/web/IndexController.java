@@ -1,5 +1,7 @@
 package com.sj.book.web;
 
+import com.sj.book.web.config.auth.LoginUser;
+import com.sj.book.web.config.auth.dto.SessionUser;
 import com.sj.book.web.dto.PostsResponseDto;
 import com.sj.book.web.service.posts.PostsService;
 import lombok.RequiredArgsConstructor;
@@ -15,8 +17,15 @@ public class IndexController {
     private final PostsService postsService;
 
     @GetMapping("/")
-    public String index(Model model) {
+    public String index(Model model, @LoginUser SessionUser user) {
         model.addAttribute("posts", postsService.findAll());
+
+//        SessionUser user = (SessionUser) httpSession.getAttribute("user"); ==> 어노테이션 방식으로 변경
+
+        if (user != null) {
+            model.addAttribute("userName", user.getName());
+        }
+
         return "index";
     }
 

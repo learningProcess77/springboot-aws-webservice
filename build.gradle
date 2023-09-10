@@ -26,8 +26,17 @@ repositories {
 dependencies {
     implementation('org.springframework.boot:spring-boot-starter-web')
     implementation('org.springframework.boot:spring-boot-starter-data-jpa')
+
+    // 임시 DB
     implementation('com.h2database:h2')
+
+    // 프론트 구성을 위한 mustache 의존성
     implementation('org.springframework.boot:spring-boot-starter-mustache')
+
+    // 소셜 로그인 등 클라이언트 입장에서 소셜 기능 구현시 필요한 의존성
+    implementation('org.springframework.boot:spring-boot-starter-oauth2-client')
+
+    implementation('org.springframework.session:spring-session-jdbc')
 
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
@@ -35,6 +44,7 @@ dependencies {
     testImplementation 'org.junit.jupiter:junit-jupiter-api'
     testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine'
     testCompileOnly('org.springframework.boot:spring-boot-starter-test')
+    testImplementation('org.springframework.security:spring-security-test')
 }
 
 test {
